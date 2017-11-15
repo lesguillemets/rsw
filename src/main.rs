@@ -1,9 +1,9 @@
 use std::io;
 use std::io::{Write, BufWriter};
 use std::thread::sleep;
-use std::time;
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration};
 
+#[allow(unused_must_use)]
 fn main() {
     let stdout = io::stdout();
     let mut writer = BufWriter::new(stdout.lock());
@@ -12,15 +12,20 @@ fn main() {
     writer.write(b"\x1B[s");
     writer.flush();
     loop {
-        sleep(time::Duration::from_millis(10));
+        sleep(Duration::from_millis(10));
         let current = SystemTime::now();
         let diff = current.duration_since(initial).unwrap();
-        if diff.as_secs() > 1 {
-            writer.write(b"\x1B[2K\x1B[u");
-            writer
-                .write(format!("{} {}", diff.as_secs(), diff.subsec_nanos() / 1000000).as_bytes());
-            writer.flush();
-        }
+        writer.write(b"\x1B[2K\x1B[u");
+        format_duration(&diff, &mut writer);
+        writer.flush();
     }
     println!("Hello, world!");
+}
+
+fn format_duration<T: Write>(d: &Duration, w: &mut BufWriter<T>) -> () {
+    let ms = d.subsec_nanos() / 1_000_000;
+    let whole_secs = d.as_secs();
+    let (whole_mins, secs) = (whole_secs / 60, whole_secs % 60);
+    let (hours, mins) = (whole_mins / 60, whole_mins % 60);
+    let _ = write!(w, "{:9>}h {:2}m {:2}s {:>03}", hours, mins, secs, ms);
 }
